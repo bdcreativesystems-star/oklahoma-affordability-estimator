@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -23,8 +22,10 @@ def connect_to_google_sheet():
         "https://www.googleapis.com/auth/drive"
     ]
 
-    creds = ServiceAccountCredentials.from_json_keyfile_name(
-        "google_credentials.json",
+    creds_dict = dict(st.secrets["gcp_service_account"])
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+        creds_dict,
         scope
     )
 
@@ -189,9 +190,6 @@ st.markdown("""
 left_col, right_col = st.columns([1, 2])
 
 
-# -----------------------------
-# LEFT BRANDING PANEL
-# -----------------------------
 with left_col:
     st.markdown("""
     <div class="side-card">
@@ -221,9 +219,6 @@ with left_col:
     """, unsafe_allow_html=True)
 
 
-# -----------------------------
-# MAIN FORM
-# -----------------------------
 with right_col:
     st.markdown("""
     <div class="warning-box">
@@ -368,8 +363,6 @@ with right_col:
                 "estimated_low_price": round(low_price, 2),
                 "estimated_high_price": round(high_price, 2)
             }
-
-            df = pd.DataFrame([lead])
 
             try:
                 if sheet is None:
