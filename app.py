@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # -----------------------------
 # PAGE SETTINGS
@@ -12,7 +14,34 @@ st.set_page_config(
 )
 
 # -----------------------------
-# CUSTOM CSS BRANDING
+# GOOGLE SHEETS CONNECTION
+# -----------------------------
+@st.cache_resource
+def connect_to_google_sheet():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "google_credentials.json",
+        scope
+    )
+
+    client = gspread.authorize(creds)
+    sheet = client.open("Oklahoma Buyer Leads").sheet1
+    return sheet
+
+
+try:
+    sheet = connect_to_google_sheet()
+except Exception as e:
+    sheet = None
+    st.error(f"Google Sheets connection failed: {e}")
+
+
+# -----------------------------
+# CUSTOM CSS
 # -----------------------------
 st.markdown("""
 <style>
@@ -99,7 +128,8 @@ st.markdown("""
         box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     }
 
-    .result-box h2, .result-box h3 {
+    .result-box h2,
+    .result-box h3 {
         color: white;
     }
 
@@ -117,7 +147,6 @@ st.markdown("""
     .stButton > button:hover {
         background: #D4A857;
         color: #0B1F3A;
-        border: none;
     }
 
     div[data-testid="stTextInput"] input,
@@ -139,6 +168,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # -----------------------------
 # HERO SECTION
 # -----------------------------
@@ -152,10 +182,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+
 # -----------------------------
 # LAYOUT
 # -----------------------------
 left_col, right_col = st.columns([1, 2])
+
 
 # -----------------------------
 # LEFT BRANDING PANEL
@@ -188,8 +220,9 @@ with left_col:
     </div>
     """, unsafe_allow_html=True)
 
+
 # -----------------------------
-# FORM PANEL
+# MAIN FORM
 # -----------------------------
 with right_col:
     st.markdown("""
@@ -339,15 +372,31 @@ with right_col:
             df = pd.DataFrame([lead])
 
             try:
-                df.to_csv(
-                    "buyer_leads.csv",
-                    mode="a",
-                    index=False,
-                    header=False
-                )
+                if sheet is None:
+                    raise Exception("Google Sheet is not connected.")
+
+                sheet.append_row([
+                    lead["timestamp"],
+                    lead["first_name"],
+                    lead["last_name"],
+                    lead["email"],
+                    lead["phone"],
+                    lead["monthly_income"],
+                    lead["monthly_debts"],
+                    lead["current_rent"],
+                    lead["down_payment"],
+                    lead["credit_range"],
+                    lead["city"],
+                    lead["estimated_payment"],
+                    lead["estimated_low_price"],
+                    lead["estimated_high_price"]
+                ])
+
                 st.caption("✅ Your information has been saved for follow-up.")
+
             except Exception as e:
                 st.error(f"Something went wrong saving the lead: {e}")
+
 
 # -----------------------------
 # FOOTER
